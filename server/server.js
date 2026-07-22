@@ -55,39 +55,51 @@ async function initDb() {
 
 initDb();
 
-// Homepage Route (GET /)
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>PTCL-Style Telecom API Server</title>
-        <style>
-          body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; line-height: 1.6; color: #1e293b; background: #f8fafc; }
-          .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 30px; max-width: 650px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-          h1 { color: #008060; margin-top: 0; }
-          code { background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 6px; font-size: 0.9em; font-family: monospace; }
-          a { color: #008060; font-weight: 600; text-decoration: none; }
-          a:hover { text-decoration: underline; }
-          ul { padding-left: 20px; }
-          li { margin-bottom: 8px; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>🚀 PTCL Practice Telecom Server</h1>
-          <p>Express Backend Server connected to <strong>Railway PostgreSQL</strong> database.</p>
-          <h3>Active API Endpoints:</h3>
-          <ul>
-            <li><a href="/api/health"><code>GET /api/health</code></a> - Server & DB Connection Health Status</li>
-            <li><a href="/api/complaints"><code>GET /api/complaints</code></a> - List All Saved Complaints</li>
-            <li><code>POST /api/complaints</code> - Submit New Complaint (Name, Phone Number, Issue)</li>
-          </ul>
-        </div>
-      </body>
-    </html>
-  `);
-});
+// Serve Client Frontend (if dist folder exists) or API Landing Page
+const clientDist = path.join(__dirname, '../client/dist');
+const fs = require('fs');
+
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+} else {
+  // Fallback API Landing Page
+  app.get('/', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>PTCL-Style Telecom API Server</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; line-height: 1.6; color: #1e293b; background: #f8fafc; }
+            .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 30px; max-width: 650px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+            h1 { color: #008060; margin-top: 0; }
+            code { background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 6px; font-size: 0.9em; font-family: monospace; }
+            a { color: #008060; font-weight: 600; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            ul { padding-left: 20px; }
+            li { margin-bottom: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>🚀 PTCL Practice Telecom Server</h1>
+            <p>Express Backend Server connected to <strong>Railway PostgreSQL</strong> database.</p>
+            <h3>Active API Endpoints:</h3>
+            <ul>
+              <li><a href="/api/health"><code>GET /api/health</code></a> - Server & DB Connection Health Status</li>
+              <li><a href="/api/complaints"><code>GET /api/complaints</code></a> - List All Saved Complaints</li>
+              <li><code>POST /api/complaints</code> - Submit New Complaint (Name, Phone Number, Issue)</li>
+            </ul>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+}
 
 // --- API Endpoints ---
 

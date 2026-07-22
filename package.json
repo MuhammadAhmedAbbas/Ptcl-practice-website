@@ -3,9 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
     "server": "node server/server.js",
-    "server:dev": "node --watch server/server.js",
     "client": "npm run dev --prefix client",
-    "start": "node server/server.js"
+    "build": "npm run build --prefix client"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.22.0"
   }
 }
