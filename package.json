@@ -1,0 +1,11 @@
+{
+  "name": "ptcl-dummy-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "server": "node server/server.js",
+    "server:dev": "node --watch server/server.js",
+    "client": "npm run dev --prefix client",
+    "start": "node server/server.js"
+  }
+}
