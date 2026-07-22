@@ -19,13 +19,25 @@ const pool = new Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false }
 });
 
-// Test Database Connection and Initialize Table
+// Test Database Connection and Initialize Tables
 async function initDb() {
   try {
     const client = await pool.connect();
     console.log('Successfully connected to PostgreSQL database!');
-    
-    // Create sample table if it doesn't exist (Step 5)
+
+    // Initialize Complaints Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS complaints (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        issue TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database table "complaints" is ready.');
+
+    // Initialize Messages Table (for backward compatibility)
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -34,6 +46,7 @@ async function initDb() {
       );
     `);
     console.log('Database table "messages" is ready.');
+
     client.release();
   } catch (err) {
     console.error('Database connection error:', err.message);
@@ -48,23 +61,27 @@ app.get('/', (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Express + Railway PostgreSQL API</title>
+        <title>PTCL-Style Telecom API Server</title>
         <style>
-          body { font-family: system-ui, sans-serif; margin: 40px; line-height: 1.6; color: #333; }
-          .card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; max-width: 600px; }
-          code { background: #e9ecef; padding: 2px 6px; border-radius: 4px; }
-          a { color: #0066cc; text-decoration: none; }
+          body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; line-height: 1.6; color: #1e293b; background: #f8fafc; }
+          .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 30px; max-width: 650px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+          h1 { color: #008060; margin-top: 0; }
+          code { background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 6px; font-size: 0.9em; font-family: monospace; }
+          a { color: #008060; font-weight: 600; text-decoration: none; }
           a:hover { text-decoration: underline; }
+          ul { padding-left: 20px; }
+          li { margin-bottom: 8px; }
         </style>
       </head>
       <body>
         <div class="card">
-          <h1>🚀 Express Server is Running!</h1>
-          <p>Welcome! Your backend server is active and connected to Railway PostgreSQL.</p>
-          <h3>Available Endpoints:</h3>
+          <h1>🚀 PTCL Practice Telecom Server</h1>
+          <p>Express Backend Server connected to <strong>Railway PostgreSQL</strong> database.</p>
+          <h3>Active API Endpoints:</h3>
           <ul>
-            <li><a href="/api/health"><code>GET /api/health</code></a> - Health check & DB status</li>
-            <li><a href="/api/messages"><code>GET /api/messages</code></a> - Fetch all messages</li>
+            <li><a href="/api/health"><code>GET /api/health</code></a> - Server & DB Connection Health Status</li>
+            <li><a href="/api/complaints"><code>GET /api/complaints</code></a> - List All Saved Complaints</li>
+            <li><code>POST /api/complaints</code> - Submit New Complaint (Name, Phone Number, Issue)</li>
           </ul>
         </div>
       </body>
@@ -72,7 +89,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// --- API Endpoints (Step 6) ---
+// --- API Endpoints ---
 
 // Health Check Endpoint
 app.get('/api/health', async (req, res) => {
@@ -88,7 +105,49 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// GET all messages
+// GET all complaints
+app.get('/api/complaints', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM complaints ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST a new complaint
+app.post('/api/complaints', async (req, res) => {
+  const { name, phone_number, issue } = req.body;
+
+  // Server-side validation
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required.' });
+  }
+  if (!phone_number || !phone_number.trim()) {
+    return res.status(400).json({ error: 'Phone number is required.' });
+  }
+  if (!issue || !issue.trim()) {
+    return res.status(400).json({ error: 'Complaint/Issue details are required.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO complaints (name, phone_number, issue) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), phone_number.trim(), issue.trim()]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Complaint submitted and saved successfully!',
+      complaint: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Failed to insert complaint:', err);
+    res.status(500).json({ error: 'Failed to record complaint in database: ' + err.message });
+  }
+});
+
+// GET all messages (Legacy)
 app.get('/api/messages', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM messages ORDER BY id DESC');
@@ -98,7 +157,7 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-// POST a new message
+// POST a new message (Legacy)
 app.post('/api/messages', async (req, res) => {
   const { content } = req.body;
   if (!content) {
@@ -116,18 +175,7 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
-// DELETE a message
-app.delete('/api/messages/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('DELETE FROM messages WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Message deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Start Express Server (Step 1)
+// Start Express Server
 app.listen(PORT, () => {
   console.log(`Express server running on http://localhost:${PORT}`);
 });
