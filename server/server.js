@@ -177,5 +177,5 @@ app.post('/api/messages', async (req, res) => {
 
 // Start Express Server
 app.listen(PORT, () => {
-  console.log(`Express server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
